@@ -32,9 +32,10 @@ RUN pip install --no-deps xformers==0.0.29.post3
 # 4) torchao quebra (torch.int1) e nao e usado -> remover
 RUN pip uninstall -y torchao || true
 
-# 5) Sanidade em build-time: falha o build se algo estiver quebrado
-RUN python -c "import torch, transformers, trl, peft, bitsandbytes, xformers, unsloth; \
+# 5) Sanidade em build-time (sem importar unsloth: ele exige GPU, ausente no runner).
+#    O import do unsloth e validado em runtime, no pod com GPU.
+RUN python -c "import torch, transformers, trl, peft, bitsandbytes, xformers; \
 print('OK torch', torch.__version__, '| transformers', transformers.__version__, \
-'| trl', trl.__version__, '| xformers', xformers.__version__, '| unsloth', unsloth.__version__)"
+'| trl', trl.__version__, '| xformers', xformers.__version__)"
 
 WORKDIR /workspace
