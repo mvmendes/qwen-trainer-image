@@ -22,27 +22,27 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Python 3.12 (ja vem na imagem com Ubuntu 24.04) — Unsloth suporta 3.11-3.13
 RUN apt-get update -qq && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-      python3-pip screen wget unzip && \
+      python3-pip python3-venv screen wget unzip && \
     rm -rf /var/lib/apt/lists/* && \
-    python3 -m pip install -U pip && \
+    python3 -m pip install -U pip --break-system-packages && \
     python3 --version
 
 # PyTorch 2.8+ cu128 (Blackwell)
 RUN pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 \
-    --index-url https://download.pytorch.org/whl/cu128
+    --index-url https://download.pytorch.org/whl/cu128 --break-system-packages
 
 # Unsloth (commit fixo)
 ARG UNSLOTH_COMMIT=1fcd69e662f233896e075fc03472f45ac60e8819
-RUN pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git@${UNSLOTH_COMMIT}"
+RUN pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git@${UNSLOTH_COMMIT}" --break-system-packages
 
 # Triton 3.3.1+ (Blackwell) + bitsandbytes 0.45.3+
-RUN pip install -U "triton>=3.3.1" "bitsandbytes>=0.45.3"
+RUN pip install -U "triton>=3.3.1" "bitsandbytes>=0.45.3" --break-system-packages
 
 # Flash Attention 2 (necessario na Blackwell — sem xformers)
-RUN pip install flash-attn --no-build-isolation
+RUN pip install flash-attn --no-build-isolation --break-system-packages
 
 # torchao quebra — remover
-RUN pip uninstall -y torchao || true
+RUN pip uninstall -y torchao --break-system-packages || true
 
 # Pre-cache Qwen 2.5 Coder 7B (evita download em todo Pod novo)
 RUN python3 -c "from huggingface_hub import snapshot_download; \
