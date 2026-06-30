@@ -1,30 +1,25 @@
 # AlienX QLoRA training image — MULTI-GPU (parametrizavel)
 #
-# Seleciona automaticamente a stack correta conforme a GPU alvo.
-# Sem build-args = stack padrao (RTX 3090/4090/L4, CUDA 12.4, torch 2.6).
+# Build para RTX 3090/4090/L4 (padrao):
+#   docker build --platform linux/amd64 \
+#     -t SEU_USUARIO/qwen-trainer-image:1.0 \
+#     -f docker/Dockerfile.multi docker/
 #
-# Build para Blackwell (RTX 5090):
+# Build para RTX 5090 (Blackwell):
 #   docker build --platform linux/amd64 \
 #     --build-arg GPU_ARCH=blackwell \
-#     -t SEU_USUARIO/alienx-train:2.0-blackwell \
+#     -t SEU_USUARIO/qwen-trainer-image:2.0-blackwell \
 #     -f docker/Dockerfile.multi docker/
 #
-# Build padrao (Ampere/Ada — RTX 30/40/L4/T4):
-#   docker build --platform linux/amd64 \
-#     -t SEU_USUARIO/alienx-train:1.0 \
-#     -f docker/Dockerfile.multi docker/
-#
-# Tags sugeridas:
-#   :1.0          -> Ampere/Ada (RTX 3090, RTX 4090, L4, T4)
-#   :2.0-blackwell -> Blackwell (RTX 5090)
+# Tags:
+#   :1.0            -> RTX 3090, RTX 4090, L4, T4 (CUDA 12.4, torch 2.6)
+#   :2.0-blackwell  -> RTX 5090 (CUDA 12.8, torch 2.8)
 
 ARG GPU_ARCH=legacy
 
 # ==========================================================================
-# Resolve a base image conforme GPU_ARCH
+# Base images por GPU_ARCH
 # ==========================================================================
-# legacy:    runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
-# blackwell: runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404
 FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04 AS base-legacy
 FROM runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404 AS base-blackwell
 FROM base-${GPU_ARCH} AS final
@@ -38,48 +33,42 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1
 
 # ==========================================================================
-# Blackwell: instala deps extras (Triton 3.3.1+, bitsandbytes 0.45.3+)
+# Unsloth (commit fixo)
+# ==========================================================================
+RUN pip install -U pip && \
+    pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git@${UNSLOTH_COMMIT}"
+
+# ==========================================================================
+# Blackwell extras: Triton 3.3.1+, bitsandbytes 0.45.3+
+# A base ja tem torch 2.8+cu128 e xformers compativel — nao sobrepor.
 # ==========================================================================
 RUN if [ "$GPU_ARCH" = "blackwell" ]; then \
-      pip install -U pip && \
       pip install -U "triton>=3.3.1" "bitsandbytes>=0.45.3"; \
-    else \
-      pip install -U pip; \
     fi
 
 # ==========================================================================
-# Unsloth (commit fixo)
+# Legacy: fixa torch 2.6 + cu124 + xformers 0.0.29.post3
 # ==========================================================================
-RUN pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git@${UNSLOTH_COMMIT}"
-
-# ==========================================================================
-# Torch + xformers conforme GPU_ARCH
-# ==========================================================================
-# legacy:    torch 2.6 + cu124, xformers 0.0.29.post3
-# blackwell: torch ja vem na base (2.8 + cu128), xformers 0.0.30
 RUN if [ "$GPU_ARCH" != "blackwell" ]; then \
       pip install -U torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 \
         --index-url https://download.pytorch.org/whl/cu124 && \
       pip install --no-deps xformers==0.0.29.post3; \
-    else \
-      pip install --no-deps xformers==0.0.30; \
     fi
 
 # ==========================================================================
-# Limpeza comum
+# Limpeza
 # ==========================================================================
 RUN pip uninstall -y torchao || true
 
 # ==========================================================================
-# Sanidade
+# Sanidade em build-time (sem import unsloth — exige GPU, ausente no runner)
 # ==========================================================================
-RUN python -c "import torch, transformers, trl, peft, bitsandbytes, xformers, unsloth; \
+RUN python -c "import torch, transformers, trl, peft, bitsandbytes, xformers; \
 print('GPU_ARCH=${GPU_ARCH}', \
 'torch', torch.__version__, \
 '| transformers', transformers.__version__, \
 '| trl', trl.__version__, \
 '| xformers', xformers.__version__, \
-'| unsloth', unsloth.__version__, \
 '| CUDA ok:', torch.cuda.is_available())"
 
 WORKDIR /workspace
