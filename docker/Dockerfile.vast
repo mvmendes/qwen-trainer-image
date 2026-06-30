@@ -26,8 +26,7 @@ RUN rm -f /etc/apt/sources.list.d/cuda*.list /etc/apt/sources.list.d/nvidia*.lis
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
       python3-pip python3-venv screen wget unzip && \
     rm -rf /var/lib/apt/lists/* && \
-    python3 -m pip install -U pip --break-system-packages && \
-    python3 --version
+    python3 --version && pip3 --version
 
 # PyTorch 2.8+ cu128 (Blackwell)
 RUN pip install torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0 \
