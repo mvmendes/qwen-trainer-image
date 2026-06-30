@@ -82,6 +82,4 @@ print('GPU_ARCH=${GPU_ARCH}', \
 '| unsloth', unsloth.__version__, \
 '| CUDA ok:', torch.cuda.is_available())"
 
-COPY scripts/training/train_unsloth.py /workspace/train_unsloth.py
-
 WORKDIR /workspace
