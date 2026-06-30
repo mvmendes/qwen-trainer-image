@@ -62,13 +62,17 @@ RUN pip uninstall -y torchao || true
 
 # ==========================================================================
 # Sanidade em build-time (sem import unsloth — exige GPU, ausente no runner)
+# Blackwell: xformers nao vem na base, instala-se em runtime no pod com GPU.
 # ==========================================================================
-RUN python -c "import torch, transformers, trl, peft, bitsandbytes, xformers; \
-print('GPU_ARCH=${GPU_ARCH}', \
-'torch', torch.__version__, \
-'| transformers', transformers.__version__, \
-'| trl', trl.__version__, \
-'| xformers', xformers.__version__, \
-'| CUDA ok:', torch.cuda.is_available())"
+RUN if [ "$GPU_ARCH" = "blackwell" ]; then \
+      python -c "import torch, transformers, trl, peft, bitsandbytes; \
+print('GPU_ARCH=blackwell | torch', torch.__version__, \
+'| transformers', transformers.__version__, '| trl', trl.__version__)"; \
+    else \
+      python -c "import torch, transformers, trl, peft, bitsandbytes, xformers; \
+print('GPU_ARCH=legacy | torch', torch.__version__, \
+'| transformers', transformers.__version__, '| trl', trl.__version__, \
+'| xformers', xformers.__version__)"; \
+    fi
 
 WORKDIR /workspace
